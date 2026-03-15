@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="委稿板">
+<meta name="theme-color" content="#12100e">
+<title>委稿管理板</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #12100e;
+  --s1:      #1c1916;
+  --s2:      #232018;
+  --s3:      #2a261f;
+  --bd:      #3a342a;
+  --bd2:     #4a4238;
+  --tx:      #e8e0d0;
+  --tx2:     #a89880;
+  --tx3:     #6a5f50;
+  --gold:    #c8963c;
+  --gold2:   #e8b054;
+  --red:     #d45a3a;
+  --green:   #5a9a6a;
+  --amber:   #c8863a;
+  --blue:    #4a7a9a;
+  --nav-h:   64px;
+  --safe-b:  env(safe-area-inset-bottom, 0px);
+  --safe-t:  env(safe-area-inset-top, 0px);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+
+html,body{height:100%;overflow:hidden;}
+
+body {
+  background: var(--bg);
+  color: var(--tx);
+  font-family: 'Noto Sans TC', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* grain overlay */
+body::after {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none;
+  z-index:9999;
+}
+
+/* ── Top Header ── */
+.header {
+  flex-shrink: 0;
+  background: var(--s1);
+  border-bottom: 1px solid var(--bd);
+  padding: calc(var(--safe-t) + 14px) 18px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 100;
+}
+
+.header-logo {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-logo span { color: var(--gold); }
+
+.notion-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--tx3);
+  padding: 5px 10px;
+  background: var(--s2);
+  border: 1px solid var(--bd);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.notion-badge:active { opacity: 0.7; }
+.notion-badge.on { color: var(--green); border-color: rgba(90,154,106,0.3); }
+
+.n-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--bd2);
+  flex-shrink:0;
+}
+.n-dot.on { background: var(--green); box-shadow: 0 0 5px var(--green); }
+
+/* ── Pages ── */
+.pages {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.page {
+  display: none;
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: calc(var(--nav-h) + var(--safe-b) + 16px);
+}
+
+.page.active { display: block; }
+
+/* ── Bottom Nav ── */
+.bottom-nav {
+  flex-shrink: 0;
+  background: var(--s1);
+  border-top: 1px solid var(--bd);
+  display: flex;
+  padding-bottom: var(--safe-b);
+  position: relative;
+  z-index: 100;
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--tx3);
+  font-size: 10px;
+  font-family: 'Noto Sans TC', sans-serif;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  min-height: var(--nav-h);
+}
+
+.nav-btn.active { color: var(--gold2); }
+.nav-btn:active  { opacity: 0.7; }
+
+.nav-icon { font-size: 20px; line-height: 1; }
+
+/* ── Stats row ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 16px;
+}
+
+.stat-card {
+  background: var(--s1);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-val {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-lbl { font-size: 11px; color: var(--tx3); letter-spacing: 0.06em; }
+
+.stat-accent {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+/* ── Section header ── */
+.sec-hd {
+  padding: 0 16px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sec-title {
+  font-size: 12px;
+  color: var(--tx3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ── FAB ── */
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--nav-h) + var(--safe-b) + 16px);
+  width: 52px;
+  height: 52px;
+  background: var(--gold);
+  border-radius: 50%;
+  border: none;
+  color: #12100e;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(200,150,60,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+  transition: all 0.2s;
+}
+
+.fab:active { transform: scale(0.92); background: var(--gold2); }
+
+/* ── Case cards ── */
+.case-list { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.case-card {
+  background: var(--s1);
+  border: 1px solid var(--bd);
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  active-scale: 0.98;
+}
+
+.case-card:active { background: var(--s2); }
+
+.case-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.case-title {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.case-client { font-size: 12px; color: var(--tx2); margin-top: 2px; }
+
+.case-amount {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 14px;
+  color: var(--gold2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.case-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Pills */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  font-family: 'Noto Sans TC', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.pill:active { opacity: 0.7; transform: scale(0.95); }
+
+.ps-draft   { background: rgba(106,95,80,0.2);  color: #8a7a68; border: 1px solid #4a4238; }
+.ps-sketch  { background: rgba(200,134,58,0.15); color: var(--amber); border: 1px solid rgba(200,134,58,0.3); }
+.ps-line    { background: rgba(74,122,154,0.15); color: #6a9aba; border: 1px solid rgba(74,122,154,0.3); }
+.ps-color   { background: rgba(122,90,154,0.15); color: #9a7aba; border: 1px solid rgba(122,90,154,0.3); }
+.ps-review  { background: rgba(200,150,60,0.15); color: var(--gold2); border: 1px solid rgba(200,150,60,0.3); }
+.ps-done    { background: rgba(90,154,106,0.15); color: #7aba8a; border: 1px solid rgba(90,154,106,0.3); }
+
+.pp-unpaid  { background: rgba(212,90,58,0.15); color: #d47a6a; border: 1px solid rgba(212,90,58,0.3); }
+.pp-partial { background: rgba(200,134,58,0.15); color: var(--amber); border: 1px solid rgba(200,134,58,0.3); }
+.pp-paid    { background: rgba(90,154,106,0.15); color: #7aba8a; border: 1px solid rgba(90,154,106,0.3); }
+
+.dl-ok   { font-size: 11px; color: var(--tx3); }
+.dl-soon { font-size: 11px; padding: 3px 8px; border-radius: 6px; color: var(--amber); background: rgba(200,134,58,0.1); }
+.dl-over { font-size: 11px; padding: 3px 8px; border-radius: 6px; color: var(--red);   background: rgba(212,90,58,0.1); }
+
+.sync-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--tx3);
+  margin-left: auto;
+}
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bd2); }
+.sync-dot.ok { background: var(--green); }
+
+/* filter scroll */
+.filter-scroll {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.filter-scroll::-webkit-scrollbar { display: none; }
+
+.fchip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid var(--bd);
+  background: transparent;
+  color: var(--tx3);
+  font-family: 'Noto Sans TC', sans-serif;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.fchip.active, .fchip:active {
+  background: var(--gold);
+  color: #12100e;
+  border-color: var(--gold);
+  font-weight: 600;
+}
+
+/* ── Deadline page ── */
+.dl-card {
+  background: var(--s1);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.dl-card:active { background: var(--s2); }
+.dl-card.urgent { border-left: 3px solid var(--amber); }
+.dl-card.overdue { border-left: 3px solid var(--red); }
+
+.dl-card-info { flex: 1; min-width: 0; }
+.dl-card-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-card-client { font-size: 12px; color: var(--tx3); margin-top: 2px; }
+
+/* ── Price page ── */
+.price-card {
+  background: var(--s1);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.price-card:active { background: var(--s2); }
+.price-name { font-size: 14px; font-weight: 500; flex: 1; }
+.price-cat  { font-size: 11px; color: var(--tx3); margin-top: 2px; }
+.price-amt  { font-family: 'Shippori Mincho', serif; font-size: 16px; color: var(--gold2); font-weight: 600; white-space: nowrap; }
+
+/* ── Template page ── */
+.tpl-card {
+  background: var(--s1);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  margin: 0 16px 12px;
+  overflow: hidden;
+}
+
+.tpl-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bd);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.tpl-head:active { background: var(--s2); }
+
+.tpl-ttl { font-size: 13px; font-weight: 500; }
+
+.tpl-body {
+  padding: 14px 16px;
+  font-size: 12px;
+  color: var(--tx2);
+  line-height: 1.85;
+  white-space: pre-line;
+  display: none;
+}
+.tpl-body.open { display: block; }
+
+.copy-tpl-btn {
+  padding: 8px 16px;
+  margin: 0 16px 12px;
+  border-radius: 8px;
+  background: var(--s3);
+  border: 1px solid var(--bd);
+  color: var(--tx2);
+  font-size: 12px;
+  font-family: 'Noto Sans TC', sans-serif;
+  cursor: pointer;
+  width: calc(100% - 32px);
+  display: none;
+}
+.copy-tpl-btn.open { display: block; }
+.copy-tpl-btn:active { background: var(--gold); color: #12100e; border-color: var(--gold); }
+
+/* ── Modals ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  z-index: 500;
+  align-items: flex-end;
+  justify-content: center;
+}
+.overlay.open { display: flex; }
+
+.sheet {
+  background: var(--s1);
+  border: 1px solid var(--bd2);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 600px;
+  max-height: 92vh;
+  overflow-y: auto;
+  animation: slideSheet 0.28s cubic-bezier(0.32,0.72,0,1);
+  padding-bottom: var(--safe-b);
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes slideSheet {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.sheet-handle {
+  width: 36px; height: 4px;
+  background: var(--bd2);
+  border-radius: 2px;
+  margin: 12px auto 0;
+}
+
+.sheet-hd {
+  padding: 16px 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sheet-ttl {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.sheet-x {
+  background: var(--s2);
+  border: 1px solid var(--bd);
+  border-radius: 50%;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  color: var(--tx3);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.sheet-bd { padding: 16px 20px 24px; }
+
+/* form */
+.fg { margin-bottom: 14px; }
+.fl { display: block; font-size: 11px; color: var(--tx3); margin-bottom: 6px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; }
+.fi, .fs, .fta {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--s2);
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  color: var(--tx);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+.fi:focus, .fs:focus, .fta:focus { border-color: var(--gold); }
+.fs { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236a5f50' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+.fs option { background: var(--s2); }
+.fta { resize: none; min-height: 80px; }
+.fr { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.sheet-footer {
+  display: flex;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.btn {
+  flex: 1;
+  padding: 13px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Noto Sans TC', sans-serif;
+  cursor: pointer;
+  border: none;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-gold { background: var(--gold); color: #12100e; }
+.btn-gold:active { background: var(--gold2); }
+.btn-ghost { background: var(--s2); color: var(--tx3); border: 1px solid var(--bd); flex: 0 0 auto; padding: 13px 20px; }
+
+/* Notion setup in sheet */
+.step {
+  display: flex;
+  gap: 12px;
+  background: var(--s2);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.step-n {
+  width: 22px; height: 22px;
+  background: var(--gold);
+  color: #12100e;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.step-t { font-size: 12px; color: var(--tx2); line-height: 1.8; }
+.step-t a { color: var(--gold2); }
+.step-t strong { color: var(--gold2); }
+.step-t code { background: var(--s3); padding: 1px 5px; border-radius: 3px; font-size: 11px; font-family: monospace; }
+.ti-row { display: flex; gap: 8px; margin-top: 8px; }
+.ti-row .fi { font-size: 13px; }
+.btn-sm { padding: 12px 14px; border-radius: 8px; font-size: 12px; background: var(--s3); border: 1px solid var(--bd); color: var(--tx2); cursor: pointer; font-family: 'Noto Sans TC', sans-serif; white-space: nowrap; flex-shrink: 0; }
+
+/* Install banner */
+.install-banner {
+  margin: 16px 16px 0;
+  background: linear-gradient(135deg, var(--s2), var(--s3));
+  border: 1px solid var(--bd2);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.install-banner.hidden { display: none; }
+.install-icon { font-size: 28px; flex-shrink: 0; }
+.install-text { flex: 1; }
+.install-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; color: var(--gold2); }
+.install-sub   { font-size: 11px; color: var(--tx3); line-height: 1.5; }
+.install-btns  { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.install-btn {
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+  border: none;
+}
+.install-btn.primary { background: var(--gold); color: #12100e; }
+.install-btn.dismiss { background: var(--s3); color: var(--tx3); border: 1px solid var(--bd); }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: calc(var(--safe-t) + 70px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: var(--s2);
+  border: 1px solid var(--bd2);
+  color: var(--tx);
+  padding: 10px 18px;
+  border-radius: 24px;
+  font-size: 13px;
+  z-index: 9000;
+  opacity: 0;
+  transition: all 0.25s;
+  white-space: nowrap;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok   { border-color: rgba(90,154,106,0.5); }
+.toast.err  { border-color: rgba(212,90,58,0.5); }
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--tx3);
+}
+.empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+.empty-txt  { font-size: 13px; line-height: 1.7; }
+
+/* section label */
+.section-lbl {
+  font-size: 11px;
+  color: var(--tx3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 16px 16px 8px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo">委稿<span>管理板</span></div>
+  <div class="notion-badge" id="notionBadge" onclick="openSetup()">
+    <div class="n-dot" id="nDot"></div>
+    <span id="nTxt">Notion</span>
+  </div>
+</div>
+
+<!-- Pages -->
+<div class="pages">
+
+  <!-- ── Cases ── -->
+  <div class="page active" id="page-cases">
+    <div id="installBanner" class="install-banner">
+      <div class="install-icon">📲</div>
+      <div class="install-text">
+        <div class="install-title">安裝到主畫面</div>
+        <div class="install-sub">像 App 一樣使用，離線也能管理案件</div>
+      </div>
+      <div class="install-btns">
+        <button class="install-btn primary" id="installBtn" onclick="doInstall()">安裝</button>
+        <button class="install-btn dismiss" onclick="dismissInstall()">略過</button>
+      </div>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="filter-scroll" id="filterRow"></div>
+
+    <div id="caseList"></div>
+    <div style="height:70px"></div>
+  </div>
+
+  <!-- ── Deadlines ── -->
+  <div class="page" id="page-deadlines">
+    <div id="dlContent"></div>
+    <div style="height:20px"></div>
+  </div>
+
+  <!-- ── Prices ── -->
+  <div class="page" id="page-prices">
+    <div id="priceList"></div>
+    <div style="height:80px"></div>
+  </div>
+
+  <!-- ── Templates ── -->
+  <div class="page" id="page-templates">
+    <div style="padding:16px 16px 8px;font-size:12px;color:var(--tx3);line-height:1.7">
+      點開展開模板，再點「複製」直接貼到 Messenger 使用。<br>
+      <span style="color:var(--gold2)">___</span> 的地方記得換成實際資訊！
+    </div>
+    <div id="tplList"></div>
+    <div style="height:20px"></div>
+  </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <button class="nav-btn active" id="nav-cases" onclick="showPage('cases')">
+    <div class="nav-icon">📋</div>
+    <div>案件</div>
+  </button>
+  <button class="nav-btn" id="nav-deadlines" onclick="showPage('deadlines')">
+    <div class="nav-icon">⏰</div>
+    <div>截止</div>
+  </button>
+  <button class="nav-btn" id="nav-prices" onclick="showPage('prices')">
+    <div class="nav-icon">💴</div>
+    <div>價目表</div>
+  </button>
+  <button class="nav-btn" id="nav-templates" onclick="showPage('templates')">
+    <div class="nav-icon">💬</div>
+    <div>模板</div>
+  </button>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="fabAction()">＋</button>
+
+<!-- ── Sheet: Case ── -->
+<div class="overlay" id="sheetCase">
+  <div class="sheet" id="sheetCaseInner">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hd">
+      <div class="sheet-ttl" id="caseSttl">新增案件</div>
+      <div class="sheet-x" onclick="closeSheet('sheetCase')">✕</div>
+    </div>
+    <div class="sheet-bd">
+      <input type="hidden" id="cEid">
+      <div class="fr">
+        <div class="fg"><label class="fl">委託人 *</label><input class="fi" id="cClient" placeholder="小明"></div>
+        <div class="fg"><label class="fl">案件名稱 *</label><input class="fi" id="cTitle" placeholder="角色立繪"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">圖稿類型</label>
+        <select class="fs" id="cType" onchange="autoFill()">
+          <option value="">— 請選擇 —</option>
+        </select>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">金額 (NT$)</label><input class="fi" id="cAmount" type="number" min="0" inputmode="numeric" placeholder="自動帶入"></div>
+        <div class="fg"><label class="fl">修改次數</label><input class="fi" id="cRevision" type="number" min="0" value="0" inputmode="numeric"></div>
+      </div>
+      <div class="fr">
+        <div class="fg">
+          <label class="fl">進度</label>
+          <select class="fs" id="cStatus">
+            <option value="草稿">草稿</option>
+            <option value="線稿">線稿</option>
+            <option value="上色">上色</option>
+            <option value="待確認">待確認</option>
+            <option value="完稿">完稿</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">付款</label>
+          <select class="fs" id="cPay">
+            <option value="未付">未付</option>
+            <option value="訂金已付">訂金已付</option>
+            <option value="全額已付">全額已付</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">截止日期</label><input class="fi" id="cDeadline" type="date"></div>
+      <div class="fg"><label class="fl">備註 / 需求</label><textarea class="fta" id="cNote" placeholder="記錄客戶需求、參考圖等…"></textarea></div>
+      <div class="sheet-footer">
+        <button class="btn btn-ghost" onclick="closeSheet('sheetCase')">取消</button>
+        <button class="btn btn-gold" onclick="saveCase()">儲存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Sheet: Price ── -->
+<div class="overlay" id="sheetPrice">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hd">
+      <div class="sheet-ttl" id="priceSttl">新增價目</div>
+      <div class="sheet-x" onclick="closeSheet('sheetPrice')">✕</div>
+    </div>
+    <div class="sheet-bd">
+      <input type="hidden" id="pEid">
+      <div class="fg"><label class="fl">項目名稱 *</label><input class="fi" id="pName" placeholder="半身像（無背景）"></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">分類</label><input class="fi" id="pCat" placeholder="角色 / 貼圖…"></div>
+        <div class="fg"><label class="fl">售價 NT$ *</label><input class="fi" id="pPrice" type="number" inputmode="numeric" placeholder="1200"></div>
+      </div>
+      <div class="fg"><label class="fl">說明（選填）</label><textarea class="fta" id="pDesc" placeholder="包含幾次修改等說明…" style="min-height:60px"></textarea></div>
+      <div class="sheet-footer">
+        <button class="btn btn-ghost" onclick="closeSheet('sheetPrice')">取消</button>
+        <button class="btn btn-gold" onclick="savePrice()">儲存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Sheet: Notion Setup ── -->
+<div class="overlay" id="sheetSetup">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hd">
+      <div class="sheet-ttl">Notion 連線設定</div>
+      <div class="sheet-x" onclick="closeSheet('sheetSetup')">✕</div>
+    </div>
+    <div class="sheet-bd">
+      <p style="font-size:12px;color:var(--tx3);margin-bottom:16px;line-height:1.8">設定完成後，每次更新進度或付款都會自動同步到 Notion。</p>
+
+      <div class="step">
+        <div class="step-n">1</div>
+        <div class="step-t">
+          前往 <a href="https://www.notion.so/my-integrations" target="_blank">notion.so/my-integrations</a><br>
+          建立 Integration，複製 <strong>Secret Token</strong>（ntn_ 開頭）：
+          <div class="ti-row">
+            <input class="fi" id="sToken" placeholder="ntn_xxxxxxxxxxxx" type="password">
+            <button class="btn-sm" onclick="togglePwd('sToken')">顯示</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-n">2</div>
+        <div class="step-t">
+          在 Notion 新建 Database，欄位：<code>案件名稱</code> <code>委託人</code> <code>進度</code> <code>付款</code> <code>金額</code> <code>截止日期</code> <code>修改次數</code> <code>圖稿類型</code><br>
+          右上角 <strong>… → Connections</strong> 加入你的 Integration。
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-n">3</div>
+        <div class="step-t">
+          複製 Database ID（網址中的 32 碼）：
+          <div class="ti-row">
+            <input class="fi" id="sDbId" placeholder="1a2b3c4d5e6f...">
+          </div>
+        </div>
+      </div>
+
+      <div class="sheet-footer" style="flex-direction:column;gap:8px">
+        <button class="btn btn-gold" onclick="saveSetup()">儲存設定</button>
+        <button class="btn btn-ghost" style="flex:none;width:100%;text-align:center" onclick="testNotion()">測試連線</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ───────────────────────────────────────────────────────────────────
+let cases  = JSON.parse(localStorage.getItem('cv2_cases')  || '[]');
+let prices = JSON.parse(localStorage.getItem('cv2_prices') || '[]');
+let nToken = localStorage.getItem('cv2_ntoken') || '';
+let nDb    = localStorage.getItem('cv2_ndb')    || '';
+let curPage = 'cases';
+let curFilter = 'all';
+
+const STATUS_ORDER = ['草稿','線稿','上色','待確認','完稿'];
+const PAY_ORDER    = ['未付','訂金已付','全額已付'];
+const STATUS_CLS   = { '草稿':'ps-draft','線稿':'ps-sketch','上色':'ps-line','待確認':'ps-review','完稿':'ps-done' };
+const PAY_CLS      = { '未付':'pp-unpaid','訂金已付':'pp-partial','全額已付':'pp-paid' };
+
+if (!prices.length) {
+  prices = [
+    { id:'p1', name:'頭像（無背景）',   cat:'角色', price:500,  desc:'含1次修改' },
+    { id:'p2', name:'半身像（無背景）', cat:'角色', price:800,  desc:'' },
+    { id:'p3', name:'全身像（無背景）', cat:'角色', price:1200, desc:'含2次修改' },
+    { id:'p4', name:'全身像（含背景）', cat:'角色', price:1800, desc:'含2次修改' },
+    { id:'p5', name:'表情貼圖 x8',      cat:'貼圖', price:2400, desc:'LINE貼圖規格' },
+    { id:'p6', name:'封面插圖',          cat:'封面', price:2000, desc:'A4 300dpi' },
+  ];
+  localStorage.setItem('cv2_prices', JSON.stringify(prices));
+}
+
+// ── PWA Install ─────────────────────────────────────────────────────────────
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!localStorage.getItem('installDismissed')) {
+    document.getElementById('installBanner').classList.remove('hidden');
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.add('hidden');
+  deferredPrompt = null;
+  toast('✓ 已安裝到主畫面！', 'ok');
+});
+
+function doInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(r => {
+      if (r.outcome === 'accepted') toast('正在安裝…', 'ok');
+      deferredPrompt = null;
+    });
+  } else {
+    // iOS fallback
+    toast('請點 Safari 底部分享按鈕 → 加入主畫面', 'info');
+  }
+}
+
+function dismissInstall() {
+  document.getElementById('installBanner').classList.add('hidden');
+  localStorage.setItem('installDismissed', '1');
+}
+
+// hide banner if already installed
+if (window.matchMedia('(display-mode: standalone)').matches) {
+  document.getElementById('installBanner').classList.add('hidden');
+}
+
+// ── Service Worker ───────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function showPage(p) {
+  curPage = p;
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('nav-'+p).classList.add('active');
+
+  // Update FAB
+  const fab = document.getElementById('fab');
+  if (p === 'prices') { fab.style.display = 'flex'; fab.textContent = '＋'; }
+  else if (p === 'cases') { fab.style.display = 'flex'; fab.textContent = '＋'; }
+  else { fab.style.display = 'none'; }
+
+  if (p === 'cases')     renderCases();
+  if (p === 'deadlines') renderDeadlines();
+  if (p === 'prices')    renderPrices();
+  if (p === 'templates') renderTemplates();
+}
+
+function fabAction() {
+  if (curPage === 'cases')  openAddCase();
+  if (curPage === 'prices') openAddPrice();
+}
+
+// ── Cases ────────────────────────────────────────────────────────────────────
+function renderCases() {
+  renderStats();
+  renderFilters();
+  renderCaseList();
+}
+
+function renderStats() {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const active  = cases.filter(c => c.status !== '完稿');
+  const unpaid  = cases.filter(c => c.pay === '未付' && c.status !== '完稿');
+  const earned  = cases.filter(c => c.pay === '全額已付').reduce((s,c) => s+(c.amount||0), 0);
+  const pending = cases.filter(c => c.pay !== '全額已付').reduce((s,c) => s+(c.amount||0), 0);
+
+  document.getElementById('statsRow').innerHTML = [
+    { val: active.length,                       lbl: '進行中',  color: '#c8963c' },
+    { val: unpaid.length,                        lbl: '未收款',  color: '#d45a3a' },
+    { val: `$${earned.toLocaleString()}`,        lbl: '已收款',  color: '#5a9a6a' },
+    { val: `$${pending.toLocaleString()}`,       lbl: '待收款',  color: '#4a7a9a' },
+  ].map(s => `
+    <div class="stat-card">
+      <div class="stat-val">${s.val}</div>
+      <div class="stat-lbl">${s.lbl}</div>
+      <div class="stat-accent" style="background:${s.color}"></div>
+    </div>`).join('');
+}
+
+function renderFilters() {
+  const filters = [
+    { k:'all', l:'全部' },
+    { k:'草稿', l:'草稿' },
+    { k:'線稿', l:'線稿' },
+    { k:'上色', l:'上色' },
+    { k:'待確認', l:'待確認' },
+    { k:'完稿', l:'完稿' },
+    { k:'未付', l:'💴 未付款' },
+  ];
+  document.getElementById('filterRow').innerHTML = filters.map(f =>
+    `<button class="fchip ${curFilter===f.k?'active':''}" onclick="setFilter('${f.k}')">${f.l}</button>`
+  ).join('');
+}
+
+function setFilter(f) {
+  curFilter = f;
+  renderFilters();
+  renderCaseList();
+}
+
+function renderCaseList() {
+  let list = curFilter === 'all' ? cases
+    : curFilter === '未付' ? cases.filter(c => c.pay === '未付')
+    : cases.filter(c => c.status === curFilter);
+
+  const el = document.getElementById('caseList');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🎨</div><div class="empty-txt">沒有符合的案件<br>點 ＋ 新增第一張吧</div></div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(c => {
+    const sc = STATUS_CLS[c.status] || 'ps-draft';
+    const pc = PAY_CLS[c.pay]       || 'pp-unpaid';
+    const dl = c.deadline ? dlBadge(c.deadline) : '';
+    const syncHtml = nToken && nDb
+      ? `<div class="sync-row"><div class="sync-dot ${c.notionId?'ok':''}"></div><span>${c.notionId?'已同步':'未同步'}</span></div>`
+      : '';
+    return `
+      <div class="case-card" onclick="openEditCase('${c.id}')">
+        <div class="case-card-top">
+          <div>
+            <div class="case-title">${c.title}</div>
+            <div class="case-client">👤 ${c.client}${c.type?' · '+c.type:''}</div>
+          </div>
+          <div class="case-amount">${c.amount ? 'NT$'+c.amount.toLocaleString() : ''}</div>
+        </div>
+        <div class="case-bottom">
+          <button class="pill ${sc}" onclick="cycleStatus(event,'${c.id}')">${c.status}</button>
+          <button class="pill ${pc}" onclick="cyclePay(event,'${c.id}')">${c.pay}</button>
+          ${dl}
+          ${syncHtml}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function dlBadge(dateStr) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const d   = new Date(dateStr); d.setHours(0,0,0,0);
+  const diff = (d-now)/86400000;
+  if (diff < 0)  return `<span class="dl-over">逾期${Math.abs(Math.round(diff))}天</span>`;
+  if (diff <= 3) return `<span class="dl-soon">剩${Math.round(diff)}天</span>`;
+  return `<span class="dl-ok">${dateStr}</span>`;
+}
+
+// ── Deadlines ────────────────────────────────────────────────────────────────
+function renderDeadlines() {
+  const now  = new Date(); now.setHours(0,0,0,0);
+  const list = cases
+    .filter(c => c.deadline && c.status !== '完稿')
+    .map(c => ({ ...c, diff: (new Date(c.deadline)-now)/86400000 }))
+    .sort((a,b) => a.diff-b.diff);
+
+  const el = document.getElementById('dlContent');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🎉</div><div class="empty-txt">近期沒有即將到期的案件</div></div>`;
+    return;
+  }
+
+  const overdue = list.filter(c => c.diff < 0);
+  const soon    = list.filter(c => c.diff >= 0 && c.diff <= 7);
+  const later   = list.filter(c => c.diff > 7);
+
+  const section = (label, items, cls='') => items.length ? `
+    <div class="section-lbl">${label}</div>
+    ${items.map(c => `
+      <div class="dl-card ${cls}" onclick="showPage('cases')">
+        <div class="dl-card-info">
+          <div class="dl-card-title">${c.title}</div>
+          <div class="dl-card-client">${c.client}</div>
+        </div>
+        ${dlBadge(c.deadline)}
+        <button class="pill ${STATUS_CLS[c.status]||'ps-draft'}" style="pointer-events:none">${c.status}</button>
+      </div>`).join('')}` : '';
+
+  el.innerHTML =
+    section('⚠️ 已逾期', overdue, 'overdue') +
+    section('🔥 7天內截止', soon, 'urgent') +
+    section('📅 之後', later);
+}
+
+// ── Prices ───────────────────────────────────────────────────────────────────
+function renderPrices() {
+  const el = document.getElementById('priceList');
+  if (!prices.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">💴</div><div class="empty-txt">還沒有價目<br>點 ＋ 新增第一個</div></div>`;
+    return;
+  }
+  el.innerHTML = prices.map(p => `
+    <div class="price-card" onclick="openEditPrice('${p.id}')">
+      <div style="flex:1">
+        <div class="price-name">${p.name}</div>
+        ${p.cat ? `<div class="price-cat">${p.cat}${p.desc?' · '+p.desc:''}</div>` : ''}
+      </div>
+      <div class="price-amt">NT$${(p.price||0).toLocaleString()}</div>
+    </div>`).join('');
+}
+
+// ── Templates ────────────────────────────────────────────────────────────────
+const TEMPLATES = [
+  { title:'📩 接受委託確認', text:`嗨！感謝你的委託 ✨\n我已確認接受你的委託，以下是本次委託的內容摘要：\n\n【委託項目】：___\n【金額】：NT$ ___\n【截止日期】：___\n【修改次數】：包含 ___ 次免費修改\n\n請確認以上內容是否正確，若無問題請先匯款訂金 NT$ ___（總額50%），收到後即開始製作 🙏` },
+  { title:'🖌 草稿確認', text:`嗨！草稿已完成，請幫我確認看看 ✏️\n\n如有需要修改的地方，請盡量在這個階段提出（包含構圖、姿勢、整體方向），進入線稿後大範圍修改可能需要額外費用喔！\n\n請在 ___ 天內回覆，謝謝 🌸` },
+  { title:'✅ 完稿交件', text:`嗨！你的圖稿已完成，請查收 🎉\n\n檔案格式：PNG（透明背景）+ JPG\n如確認無誤，麻煩補齊尾款 NT$ ___ 後我會寄出原始檔，感謝你的委託！有任何問題歡迎告訴我 💌` },
+  { title:'💴 請款提醒', text:`嗨～不好意思打擾你，想請問一下之前委託的尾款 NT$ ___ 方便這週內匯款嗎？\n\n匯款資訊：\n銀行：___\n帳號：___\n戶名：___\n\n收到後會立刻通知你，謝謝你 🙏` },
+  { title:'⏳ 修改次數通知', text:`嗨！這次修改已達本次委託包含的修改次數上限。\n\n如需繼續修改，追加修改費用為每次 NT$ ___，請問你希望繼續嗎？\n\n若確認繼續我會先請你先匯款，謝謝你的理解 🌸` },
+];
+
+function renderTemplates() {
+  document.getElementById('tplList').innerHTML = TEMPLATES.map((t,i) => `
+    <div class="tpl-card">
+      <div class="tpl-head" onclick="toggleTpl(${i})">
+        <div class="tpl-ttl">${t.title}</div>
+        <span style="font-size:12px;color:var(--tx3)" id="tplArrow${i}">▶</span>
+      </div>
+      <div class="tpl-body" id="tplBody${i}">${t.text}</div>
+    </div>
+    <button class="copy-tpl-btn" id="tplBtn${i}" onclick="copyTpl(${i})">📋 複製訊息</button>
+  `).join('');
+}
+
+function toggleTpl(i) {
+  const body = document.getElementById('tplBody'+i);
+  const btn  = document.getElementById('tplBtn'+i);
+  const arr  = document.getElementById('tplArrow'+i);
+  const open = body.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  arr.textContent = open ? '▼' : '▶';
+}
+
+function copyTpl(i) {
+  navigator.clipboard.writeText(TEMPLATES[i].text).then(() => toast('已複製！', 'ok'));
+}
+
+// ── CRUD: Cases ──────────────────────────────────────────────────────────────
+function openAddCase() {
+  document.getElementById('caseSttl').textContent = '新增案件';
+  document.getElementById('cEid').value = '';
+  ['cClient','cTitle','cNote'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cAmount').value   = '';
+  document.getElementById('cRevision').value = '0';
+  document.getElementById('cDeadline').value = '';
+  document.getElementById('cStatus').value   = '草稿';
+  document.getElementById('cPay').value      = '未付';
+  populateTypeSelect('');
+  document.getElementById('sheetCase').classList.add('open');
+}
+
+function openEditCase(id) {
+  const c = cases.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('caseSttl').textContent = '編輯案件';
+  document.getElementById('cEid').value      = id;
+  document.getElementById('cClient').value   = c.client;
+  document.getElementById('cTitle').value    = c.title;
+  document.getElementById('cAmount').value   = c.amount || '';
+  document.getElementById('cRevision').value = c.revision || 0;
+  document.getElementById('cDeadline').value = c.deadline || '';
+  document.getElementById('cStatus').value   = c.status;
+  document.getElementById('cPay').value      = c.pay || '未付';
+  document.getElementById('cNote').value     = c.note || '';
+  populateTypeSelect(c.type);
+  document.getElementById('sheetCase').classList.add('open');
+}
+
+function populateTypeSelect(selected) {
+  document.getElementById('cType').innerHTML =
+    '<option value="">— 請選擇 —</option>' +
+    prices.map(p => `<option value="${p.name}" ${p.name===selected?'selected':''}>${p.name} — NT$${(p.price||0).toLocaleString()}</option>`).join('') +
+    `<option value="其他" ${selected==='其他'?'selected':''}>其他</option>`;
+}
+
+function autoFill() {
+  const sel = document.getElementById('cType').value;
+  const p = prices.find(x => x.name === sel);
+  if (p) document.getElementById('cAmount').value = p.price;
+}
+
+function saveCase() {
+  const client = document.getElementById('cClient').value.trim();
+  const title  = document.getElementById('cTitle').value.trim();
+  if (!client || !title) { toast('請填寫委託人和案件名稱', 'err'); return; }
+
+  const data = {
+    client,
+    title,
+    type:     document.getElementById('cType').value,
+    amount:   parseInt(document.getElementById('cAmount').value) || 0,
+    status:   document.getElementById('cStatus').value,
+    pay:      document.getElementById('cPay').value,
+    deadline: document.getElementById('cDeadline').value,
+    revision: parseInt(document.getElementById('cRevision').value) || 0,
+    note:     document.getElementById('cNote').value.trim(),
+  };
+
+  const eid = document.getElementById('cEid').value;
+  if (eid) {
+    const i   = cases.findIndex(c => c.id === eid);
+    const old = cases[i];
+    cases[i]  = { ...old, ...data };
+    if (old.notionId && nToken && nDb) updateNotion(cases[i]);
+    toast('案件已更新');
+  } else {
+    data.id = 'c' + Date.now();
+    data.notionId = null;
+    cases.unshift(data);
+    toast('案件已新增');
+    if (nToken && nDb) createNotion(data);
+  }
+
+  saveData();
+  closeSheet('sheetCase');
+}
+
+function cycleStatus(e, id) {
+  e.stopPropagation();
+  const c = cases.find(x => x.id === id);
+  if (!c) return;
+  c.status = STATUS_ORDER[(STATUS_ORDER.indexOf(c.status)+1) % STATUS_ORDER.length];
+  saveData();
+  toast(`進度：${c.status}`, 'info');
+  if (c.notionId && nToken && nDb) updateNotion(c);
+}
+
+function cyclePay(e, id) {
+  e.stopPropagation();
+  const c = cases.find(x => x.id === id);
+  if (!c) return;
+  c.pay = PAY_ORDER[(PAY_ORDER.indexOf(c.pay)+1) % PAY_ORDER.length];
+  saveData();
+  toast(`付款：${c.pay}`, 'info');
+  if (c.notionId && nToken && nDb) updateNotion(c);
+}
+
+// ── CRUD: Prices ─────────────────────────────────────────────────────────────
+function openAddPrice() {
+  document.getElementById('priceSttl').textContent = '新增價目';
+  document.getElementById('pEid').value = '';
+  ['pName','pCat','pDesc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pPrice').value = '';
+  document.getElementById('sheetPrice').classList.add('open');
+}
+
+function openEditPrice(id) {
+  const p = prices.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('priceSttl').textContent = '編輯價目';
+  document.getElementById('pEid').value  = id;
+  document.getElementById('pName').value = p.name;
+  document.getElementById('pCat').value  = p.cat  || '';
+  document.getElementById('pPrice').value= p.price;
+  document.getElementById('pDesc').value = p.desc || '';
+  document.getElementById('sheetPrice').classList.add('open');
+}
+
+function savePrice() {
+  const name  = document.getElementById('pName').value.trim();
+  const price = parseInt(document.getElementById('pPrice').value);
+  if (!name || isNaN(price)) { toast('請填寫項目名稱和售價', 'err'); return; }
+
+  const data = {
+    name, price,
+    cat:  document.getElementById('pCat').value.trim(),
+    desc: document.getElementById('pDesc').value.trim(),
+  };
+
+  const eid = document.getElementById('pEid').value;
+  if (eid) {
+    prices[prices.findIndex(p => p.id === eid)] = { ...prices.find(p => p.id === eid), ...data };
+    toast('價目已更新');
+  } else {
+    data.id = 'p' + Date.now();
+    prices.push(data);
+    toast('價目已新增');
+  }
+
+  localStorage.setItem('cv2_prices', JSON.stringify(prices));
+  closeSheet('sheetPrice');
+  renderPrices();
+}
+
+// ── Notion ────────────────────────────────────────────────────────────────────
+function openSetup() {
+  document.getElementById('sToken').value = nToken;
+  document.getElementById('sDbId').value  = nDb;
+  document.getElementById('sheetSetup').classList.add('open');
+}
+
+function saveSetup() {
+  nToken = document.getElementById('sToken').value.trim();
+  nDb    = document.getElementById('sDbId').value.trim();
+  localStorage.setItem('cv2_ntoken', nToken);
+  localStorage.setItem('cv2_ndb', nDb);
+  updateNotionBadge();
+  closeSheet('sheetSetup');
+  toast('Notion 設定已儲存', 'ok');
+  if (curPage === 'cases') renderCases();
+}
+
+function updateNotionBadge() {
+  const on = !!(nToken && nDb);
+  document.getElementById('nDot').className  = 'n-dot' + (on?' on':'');
+  document.getElementById('nTxt').textContent = on ? 'Notion ✓' : 'Notion';
+  document.getElementById('notionBadge').className = 'notion-badge' + (on?' on':'');
+}
+
+async function testNotion() {
+  const t = document.getElementById('sToken').value.trim();
+  const d = document.getElementById('sDbId').value.trim();
+  if (!t || !d) { toast('請先填入 Token 和 DB ID', 'err'); return; }
+  toast('測試連線中…', 'info');
+  try {
+    const r = await fetch(`https://api.notion.com/v1/databases/${d}`, {
+      headers: { 'Authorization': `Bearer ${t}`, 'Notion-Version': '2022-06-28' }
+    });
+    r.ok ? toast('✓ 連線成功！', 'ok') : toast(`失敗：${r.status} 請確認 Token 和 DB ID`, 'err');
+  } catch { toast('連線失敗，請確認 Token', 'err'); }
+}
+
+function notionProps(c) {
+  const p = {
+    '案件名稱': { title: [{ text: { content: c.title } }] },
+    '委託人':   { rich_text: [{ text: { content: c.client } }] },
+    '進度':     { select: { name: c.status } },
+    '付款':     { select: { name: c.pay || '未付' } },
+    '修改次數': { number: c.revision || 0 },
+    '金額':     { number: c.amount   || 0 },
+  };
+  if (c.deadline) p['截止日期'] = { date: { start: c.deadline } };
+  if (c.type)     p['圖稿類型'] = { rich_text: [{ text: { content: c.type } }] };
+  return p;
+}
+
+async function createNotion(c) {
+  if (!nToken || !nDb) return;
+  try {
+    const r = await fetch('https://api.notion.com/v1/pages', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${nToken}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parent: { database_id: nDb }, properties: notionProps(c) })
+    });
+    if (r.ok) {
+      const data = await r.json();
+      const ci = cases.findIndex(x => x.id === c.id);
+      if (ci !== -1) { cases[ci].notionId = data.id; localStorage.setItem('cv2_cases', JSON.stringify(cases)); }
+      toast('✓ 已同步到 Notion', 'ok');
+    } else {
+      const e = await r.json();
+      toast(`Notion 同步失敗：${e.message||r.status}`, 'err');
+    }
+  } catch { toast('同步失敗，請確認連線', 'err'); }
+}
+
+async function updateNotion(c) {
+  if (!c.notionId || !nToken) return;
+  try {
+    await fetch(`https://api.notion.com/v1/pages/${c.notionId}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${nToken}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ properties: notionProps(c) })
+    });
+    toast('Notion 已自動更新', 'ok');
+  } catch {}
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function togglePwd(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function closeSheet(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+document.querySelectorAll('.overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+function saveData() {
+  localStorage.setItem('cv2_cases', JSON.stringify(cases));
+  if (curPage === 'cases') renderCases();
+}
+
+let toastT;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+updateNotionBadge();
+// hide install banner if already dismissed
+if (localStorage.getItem('installDismissed')) {
+  document.getElementById('installBanner').classList.add('hidden');
+}
+renderCases();
+</script>
+</body>
+</html>
